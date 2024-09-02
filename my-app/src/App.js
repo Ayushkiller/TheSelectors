@@ -1,28 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container, Paper, TextField, Select, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 
-// Mock data
-const mockExperts = [
-  { id: 1, name: 'Hello World', expertise: 'Web Development', experience: 5 },
-  { id: 2, name: 'Magical people', expertise: 'Data Science', experience: 7 },
-  { id: 3, name: 'Happy moments', expertise: 'UI/UX Design', experience: 4 },
-];
-
 // Dashboard Component
-const Dashboard = () => (
-  <Container>
-    <Typography variant="h4" gutterBottom>Dashboard</Typography>
-    <Paper elevation={3} style={{ padding: '20px', marginBottom: '20px' }}>
-      <Typography variant="h6">Quick Stats</Typography>
-      <Typography>Total Interviews: 15</Typography>
-      <Typography>Pending Expert Assignments: 3</Typography>
-    </Paper>
-    <Button variant="contained" color="primary" component={Link} to="/create-interview">
-      Create New Interview
-    </Button>
-  </Container>
-);
+const Dashboard = () => {
+  const [interviews, setInterviews] = useState([]);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/interviews')
+      .then((response) => response.json())
+      .then((data) => setInterviews(data));
+  }, []);
+
+  return (
+    <Container>
+      <Typography variant="h4" gutterBottom>Dashboard</Typography>
+      <Paper elevation={3} style={{ padding: '20px', marginBottom: '20px' }}>
+        <Typography variant="h6">Quick Stats</Typography>
+        <Typography>Total Interviews: {interviews.length}</Typography>
+        <Typography>Pending Expert Assignments: {interviews.filter(interview => !interview.expertAssigned).length}</Typography>
+      </Paper>
+      <Button variant="contained" color="primary" component={Link} to="/create-interview">
+        Create New Interview
+      </Button>
+    </Container>
+  );
+};
 
 // CreateInterview Component
 const CreateInterview = () => {
@@ -39,8 +42,25 @@ const CreateInterview = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Interview Data:', interviewData);
-    // Placeholder: send this data to the backend
+
+    fetch('http://localhost:5000/api/interviews', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(interviewData),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log('Interview created:', data);
+        // Optionally reset the form or show a success message
+        setInterviewData({
+          subject: '',
+          date: '',
+          candidateName: '',
+          requiredExpertise: '',
+        });
+      });
   };
 
   return (
@@ -94,31 +114,41 @@ const CreateInterview = () => {
 };
 
 // ExpertList Component
-const ExpertList = () => (
-  <Container>
-    <Typography variant="h4" gutterBottom>Expert List</Typography>
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Expertise</TableCell>
-            <TableCell>Experience (years)</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {mockExperts.map((expert) => (
-            <TableRow key={expert.id}>
-              <TableCell>{expert.name}</TableCell>
-              <TableCell>{expert.expertise}</TableCell>
-              <TableCell>{expert.experience}</TableCell>
+const ExpertList = () => {
+  const [experts, setExperts] = useState([]);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/experts')
+      .then((response) => response.json())
+      .then((data) => setExperts(data));
+  }, []);
+
+  return (
+    <Container>
+      <Typography variant="h4" gutterBottom>Expert List</Typography>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Expertise</TableCell>
+              <TableCell>Experience (years)</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Container>
-);
+          </TableHead>
+          <TableBody>
+            {experts.map((expert) => (
+              <TableRow key={expert.id}>
+                <TableCell>{expert.name}</TableCell>
+                <TableCell>{expert.expertise}</TableCell>
+                <TableCell>{expert.experience}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Container>
+  );
+};
 
 // Main App Component
 const App = () => {
