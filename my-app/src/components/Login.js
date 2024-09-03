@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TextField, Button, Container, Typography } from '@mui/material';
+import { TextField, Button, Container, Typography, Link, Box } from '@mui/material';
 
 const Login = ({ setAuth }) => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
@@ -11,54 +11,87 @@ const Login = ({ setAuth }) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    fetch('http://localhost:5000/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          setAuth(data.token);
-          navigate('/');
-        } else {
-          setError(data.message);
-        }
-      })
-      .catch(() => setError('Failed to login'));
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        localStorage.setItem('token', data.token);
+        setAuth(data.token);
+        navigate('/');
+      } else {
+        setError(data.message || 'Failed to login');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    }
+  };
+
+  const useDefaultCredentials = () => {
+    setCredentials({ username: 'hello@example.com', password: 'helloworld' });
   };
 
   return (
-    <Container>
-      <Typography variant="h4" gutterBottom>Login</Typography>
-      {error && <Typography color="error">{error}</Typography>}
-      <form onSubmit={handleSubmit}>
-        <TextField
-          fullWidth
-          margin="normal"
-          label="Username"
-          name="username"
-          value={credentials.username}
-          onChange={handleChange}
-        />
-        <TextField
-          fullWidth
-          margin="normal"
-          label="Password"
-          name="password"
-          type="password"
-          value={credentials.password}
-          onChange={handleChange}
-        />
-        <Button type="submit" variant="contained" color="primary" style={{ marginTop: '20px' }}>
+    <Container maxWidth="xs">
+      <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography component="h1" variant="h5">
           Login
-        </Button>
-      </form>
+        </Typography>
+        {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="username"
+            label="Email Address"
+            name="username"
+            autoComplete="email"
+            autoFocus
+            value={credentials.username}
+            onChange={handleChange}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type="password"
+            id="password"
+            autoComplete="current-password"
+            value={credentials.password}
+            onChange={handleChange}
+          />
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
+          >
+            Sign In
+          </Button>
+          <Link
+            component="button"
+            variant="body2"
+            onClick={useDefaultCredentials}
+            sx={{ mt: 2, display: 'block', textAlign: 'center' }}
+          >
+            Use Default Credentials
+          </Link>
+        </Box>
+      </Box>
     </Container>
   );
 };
