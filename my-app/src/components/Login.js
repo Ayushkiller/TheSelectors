@@ -7,11 +7,13 @@ const Login = ({ setAuth }) => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // Function to handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCredentials((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Function to handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -22,12 +24,14 @@ const Login = ({ setAuth }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({
+          email: credentials.username, // Ensure this matches backend expectation
+          password: credentials.password,
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Login error:', errorData);
         throw new Error(errorData.msg || 'Login failed');
       }
 
@@ -36,11 +40,11 @@ const Login = ({ setAuth }) => {
       setAuth(data.token);
       navigate('/');
     } catch (err) {
-      console.error('Fetch error:', err); // Log error to console
       setError(err.message || 'Network error. Please try again.');
     }
   };
 
+  // Function to set default credentials
   const useDefaultCredentials = () => {
     setCredentials({ username: 'hello@example.com', password: 'helloworld' });
   };
