@@ -7,18 +7,27 @@ const Dashboard = () => {
   const [interviews, setInterviews] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/interviews')
-      .then((response) => response.json())
-      .then((data) => {
+    const fetchInterviews = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/interviews');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
         setInterviews(data);
+      } catch (err) {
+        setError(`Error fetching interviews: ${err.message}`);
+      } finally {
         setLoading(false);
-      })
-      .catch((error) => {
-        console.error('Error fetching interviews:', error);
-        setLoading(false);
-      });
+      }
+    };
+
+    fetchInterviews();
   }, []);
 
   const filteredInterviews = interviews.filter(interview =>
@@ -95,6 +104,10 @@ const Dashboard = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />
         </Box>
+      ) : error ? (
+        <Typography color="error" align="center">
+          {error}
+        </Typography>
       ) : (
         <TableContainer component={Paper} elevation={3}>
           <Table sx={{ minWidth: 650 }} aria-label="interview table">
@@ -108,7 +121,7 @@ const Dashboard = () => {
             </TableHead>
             <TableBody>
               {filteredInterviews.map((interview) => (
-                <TableRow key={interview.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                <TableRow key={interview._id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                   <TableCell>{interview.subject}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
