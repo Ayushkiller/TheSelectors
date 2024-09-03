@@ -8,7 +8,8 @@ const Login = ({ setAuth }) => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setCredentials({ ...credentials, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setCredentials((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -24,17 +25,17 @@ const Login = ({ setAuth }) => {
         body: JSON.stringify(credentials),
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.token) {
-        localStorage.setItem('token', data.token);
-        setAuth(data.token);
-        navigate('/');
-      } else {
-        setError(data.message || 'Failed to login');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.msg || 'Login failed');
       }
+
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      setAuth(data.token);
+      navigate('/');
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError(err.message || 'Network error. Please try again.');
     }
   };
 
