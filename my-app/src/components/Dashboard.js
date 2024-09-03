@@ -15,7 +15,7 @@ const Dashboard = () => {
         const response = await fetch('http://localhost:5000/api/interviews');
         
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
         const data = await response.json();
