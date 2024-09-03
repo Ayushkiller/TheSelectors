@@ -27,6 +27,7 @@ const Login = ({ setAuth }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Login error:', errorData);
         throw new Error(errorData.msg || 'Login failed');
       }
 
@@ -35,6 +36,7 @@ const Login = ({ setAuth }) => {
       setAuth(data.token);
       navigate('/');
     } catch (err) {
+      console.error('Fetch error:', err); // Log error to console
       setError(err.message || 'Network error. Please try again.');
     }
   };
