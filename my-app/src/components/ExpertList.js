@@ -8,7 +8,7 @@ const ExpertList = () => {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetch(`http://localhost:${process.env.REACT_APP_API_PORT}/api/experts`)
+    fetch(`http://${process.env.REACT_APP_API_PORT}/api/experts`)
       .then((response) => response.json())
       .then((data) => {
         setExperts(data);
