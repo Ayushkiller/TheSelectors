@@ -9,7 +9,7 @@ import useFetch from '../hooks/useFetch';
 
 const Dashboard = () => {
   const [search, setSearch] = useState('');
-  const { data: interviews, loading, error } = useFetch(`http://localhost:${process.env.REACT_APP_API_PORT}/api/interviews`);
+  const { data: interviews, loading, error } = useFetch(`http://${process.env.REACT_APP_API_PORT}/api/interviews`);
 
   const filteredInterviews = interviews?.filter(interview =>
     interview.subject.toLowerCase().includes(search.toLowerCase()) ||

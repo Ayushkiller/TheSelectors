@@ -19,7 +19,7 @@ const Login = ({ setAuth }) => {
     setError('');
 
     try {
-      const response = await fetch(`http://localhost:${process.env.REACT_APP_API_PORT}/api/auth/login`, {
+      const response = await fetch(`http://${process.env.REACT_APP_API_PORT}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
