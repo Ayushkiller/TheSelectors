@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Container, Typography, Grid, Box, CircularProgress, TextField, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Button
 } from '@mui/material';
@@ -9,7 +9,7 @@ import useFetch from '../hooks/useFetch';
 
 const Dashboard = () => {
   const [search, setSearch] = useState('');
-  const { data: interviews, loading, error } = useFetch('http://localhost:5000/api/interviews');
+  const { data: interviews, loading, error } = useFetch(`http://localhost:${process.env.REACT_APP_API_PORT}/api/interviews`);
 
   const filteredInterviews = interviews?.filter(interview =>
     interview.subject.toLowerCase().includes(search.toLowerCase()) ||

@@ -25,7 +25,7 @@ const CreateInterview = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/interviews', {
+      const response = await fetch(`http://localhost:${process.env.REACT_APP_API_PORT}/api/interviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

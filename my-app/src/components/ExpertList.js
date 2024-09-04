@@ -8,7 +8,7 @@ const ExpertList = () => {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/experts')
+    fetch(`http://localhost:${process.env.REACT_APP_API_PORT}/api/experts`)
       .then((response) => response.json())
       .then((data) => {
         setExperts(data);
@@ -31,7 +31,7 @@ const ExpertList = () => {
         Expert List
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: 2 }}>
-        <Search color="#9e9e9e" size={20} style={{ mr: 1, my: 0.5 }} />
+        <Search color="#9e9e9e" size={20} style={{ marginRight: 8 }} />
         <TextField 
           label="Search experts" 
           variant="standard" 
