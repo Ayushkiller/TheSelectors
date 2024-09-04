@@ -1,79 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Container, Paper, Typography, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Box, Grid, Card, CardContent, CircularProgress } from '@mui/material';
+import {
+  Container, Typography, Grid, Box, CircularProgress, TextField, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Button
+} from '@mui/material';
 import { Link } from 'react-router-dom';
 import { Search, PlusCircle, Calendar, User, Briefcase } from 'lucide-react';
+import CardStatistic from './CardStatistic'; 
+import useFetch from '../hooks/useFetch'; 
 
 const Dashboard = () => {
-  const [interviews, setInterviews] = useState([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data: interviews, loading, error } = useFetch('http://localhost:5000/api/interviews');
 
-  useEffect(() => {
-    const fetchInterviews = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/interviews');
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        setInterviews(data);
-      } catch (err) {
-        setError(`Error fetching interviews: ${err.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInterviews();
-  }, []);
-
-  const filteredInterviews = interviews.filter(interview =>
+  const filteredInterviews = interviews?.filter(interview =>
     interview.subject.toLowerCase().includes(search.toLowerCase()) ||
     interview.candidateName.toLowerCase().includes(search.toLowerCase())
-  );
+  ) || [];
 
-  const pendingAssignments = interviews.filter(interview => !interview.expertAssigned).length;
+  const pendingAssignments = interviews?.filter(interview => !interview.expertAssigned).length || 0;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Dashboard
-      </Typography>
+      <Typography variant="h4" gutterBottom>Dashboard</Typography>
       
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={4}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Interviews
-              </Typography>
-              <Typography variant="h5" component="div">
-                {interviews.length}
-              </Typography>
-            </CardContent>
-          </Card>
+          <CardStatistic title="Total Interviews" value={interviews?.length || 0} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+          <CardStatistic title="Pending Expert Assignments" value={pendingAssignments} />
         </Grid>
         <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Pending Expert Assignments
-              </Typography>
-              <Typography variant="h5" component="div">
-                {pendingAssignments}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Create New Interview
-              </Typography>
+              <Typography color="textSecondary" gutterBottom>Create New Interview</Typography>
               <Button
                 component={Link}
                 to="/create-interview"
@@ -90,10 +49,10 @@ const Dashboard = () => {
       </Grid>
 
       <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: 2 }}>
-        <Search color="#9e9e9e" size={20} style={{ mr: 1, my: 0.5 }} />
-        <TextField 
-          label="Search interviews" 
-          variant="standard" 
+        <Search color="#9e9e9e" size={20} style={{ marginRight: 8 }} />
+        <TextField
+          label="Search interviews"
+          variant="standard"
           fullWidth
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -105,9 +64,7 @@ const Dashboard = () => {
           <CircularProgress />
         </Box>
       ) : error ? (
-        <Typography color="error" align="center">
-          {error}
-        </Typography>
+        <Typography color="error" align="center">{error}</Typography>
       ) : (
         <TableContainer component={Paper} elevation={3}>
           <Table sx={{ minWidth: 650 }} aria-label="interview table">
