@@ -1,25 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TextField, Button, Container, Typography, Box, Paper, Snackbar, CircularProgress, List, ListItem, ListItemText, Alert, Chip, Rating, Grid } from '@mui/material';
+import { TextField, Button, Container, Typography, Box, Paper, Snackbar, CircularProgress, Grid, Chip, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, User, Briefcase, Book, PlusCircle, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 
 const CreateInterview = () => {
   const [form, setForm] = useState({
     subject: '',
     date: '',
     candidateName: '',
-    requiredExpertise: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '' });
   const navigate = useNavigate();
 
-  const [chatHistory, setChatHistory] = useState([{ role: 'assistant', content: "Hello! I'm here to help evaluate the expertise needed for this role. What is the main role or position you're hiring for?" }]);
+  const [chatHistory, setChatHistory] = useState([{ role: 'assistant', content: "Hello! I'm here to help evaluate the expertise needed for the role you're hiring for. What specific skills or technologies are you looking for?" }]);
   const [userInput, setUserInput] = useState('');
-  const [expertiseEvaluation] = useState(null);
-  const [manualExpertise, setManualExpertise] = useState([]);
-  const [newSkill, setNewSkill] = useState({ name: '', rating: 5 });
+  const [expertiseEvaluation, setExpertiseEvaluation] = useState({});
 
   const chatEndRef = useRef(null);
 
@@ -33,19 +30,17 @@ const CreateInterview = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setLoading(true);
     setError('');
 
     try {
       const formData = { 
         ...form, 
-        requiredExpertise: JSON.stringify({
-          skills: [...(expertiseEvaluation?.skills || []), ...manualExpertise],
-          overall_rating: calculateOverallRating([...(expertiseEvaluation?.skills || []), ...manualExpertise])
-        })
+        requiredExpertise: JSON.stringify(expertiseEvaluation)
       };
 
-      const response = await fetch(`http://${process.env.REACT_APP_API_PORT}/api/interviews`, {
+      const response = await fetch(`http://192.168.3.13:8000/interviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +51,7 @@ const CreateInterview = () => {
 
       const data = await response.json();
 
-      if (response.ok && data._id) {
+      if (response.ok) {
         setSnackbar({ open: true, message: 'Interview created successfully!' });
         setTimeout(() => navigate('/'), 2000);
       } else {
@@ -69,198 +64,163 @@ const CreateInterview = () => {
     }
   };
 
-  const closeSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  const sendMessage = async (e) => {
-    e.preventDefault();
+  const handleChat = async () => {
     if (!userInput.trim()) return;
-  
-    const newChatHistory = [...chatHistory, { role: 'user', content: userInput }];
-    setChatHistory(newChatHistory);
+    setChatHistory([...chatHistory, { role: 'user', content: userInput }]);
     setUserInput('');
-  
-    // Simulating chatbot response (replace this with actual API call when fixed)
-    setTimeout(() => {
-      setChatHistory([...newChatHistory, { role: 'assistant', content: "I understand you're looking for expertise related to that role. Could you please tell me some specific skills or qualifications that might be important for this position?" }]);
-    }, 1000);
-  };
+    setLoading(true);
 
-  const addManualSkill = () => {
-    if (newSkill.name.trim()) {
-      setManualExpertise([...manualExpertise, newSkill]);
-      setNewSkill({ name: '', rating: 5 });
+    try {
+      const response = await fetch('http://192.168.3.13:8000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: chatHistory.concat({ role: 'user', content: userInput }),
+          model: "phi-3-medium-128k"
+        }),
+      });
+
+      const data = await response.json();
+      setChatHistory([...chatHistory, { role: 'user', content: userInput }, { role: 'assistant', content: data.response }]);
+
+      if (data.evaluation) {
+        setExpertiseEvaluation(data.evaluation);
+      }
+    } catch (err) {
+      setError('Failed to get response from server');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const calculateOverallRating = (skills) => {
-    const sum = skills.reduce((acc, skill) => acc + skill.rating, 0);
-    return skills.length > 0 ? Math.round(sum / skills.length) : 0;
+  const validateForm = () => {
+    if (!form.subject || !form.date || !form.candidateName) {
+      setError('Please fill in all required fields');
+      return false;
+    }
+    return true;
   };
 
   return (
-    <Container maxWidth="lg">
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={7}>
-          <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
-            <Typography variant="h4" gutterBottom>
-              Create Interview
-            </Typography>
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Subject"
-                name="subject"
-                value={form.subject}
-                onChange={handleChange}
-                required
-                InputProps={{
-                  startAdornment: <Book size={20} style={{ marginRight: 8 }} />,
-                }}
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Date"
-                name="date"
-                type="date"
-                value={form.date}
-                onChange={handleChange}
-                required
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                InputProps={{
-                  startAdornment: <Calendar size={20} style={{ marginRight: 8 }} />,
-                }}
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Candidate Name"
-                name="candidateName"
-                value={form.candidateName}
-                onChange={handleChange}
-                required
-                InputProps={{
-                  startAdornment: <User size={20} style={{ marginRight: 8 }} />,
-                }}
-              />
-              <Box sx={{ mt: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Required Expertise
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {[...(expertiseEvaluation?.skills || []), ...manualExpertise].map((skill, index) => (
-                    <Chip
-                      key={index}
-                      label={`${skill.name}: ${skill.rating}`}
-                      color="primary"
-                      variant="outlined"
-                    />
-                  ))}
+    <Container>
+      <Paper sx={{ padding: 3, marginTop: 3 }}>
+        <Typography variant="h4" gutterBottom>Create Interview</Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            label="Subject"
+            name="subject"
+            value={form.subject}
+            onChange={handleChange}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TextField
+            label="Date"
+            name="date"
+            type="date"
+            value={form.date}
+            onChange={handleChange}
+            fullWidth
+            required
+            margin="normal"
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Candidate Name"
+            name="candidateName"
+            value={form.candidateName}
+            onChange={handleChange}
+            fullWidth
+            required
+            margin="normal"
+          />
+
+          <Box sx={{ margin: '20px 0' }}>
+            <Typography variant="h6">Chat with AI</Typography>
+            <Box sx={{ height: 400, overflowY: 'scroll', padding: 2, border: '1px solid #ccc', borderRadius: 2 }}>
+              {chatHistory.map((msg, index) => (
+                <Box key={index} sx={{ marginBottom: 2, textAlign: msg.role === 'user' ? 'right' : 'left' }}>
+                  <Typography variant="body1" sx={{ 
+                    backgroundColor: msg.role === 'user' ? '#e1f5fe' : '#f1f8e9', 
+                    padding: 1, 
+                    borderRadius: 2,
+                    display: 'inline-block',
+                    maxWidth: '80%'
+                  }}>
+                    {msg.content}
+                  </Typography>
                 </Box>
-                <Box sx={{ mt: 2 }}>
-                  <TextField
-                    label="Skill Name"
-                    value={newSkill.name}
-                    onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
-                    sx={{ mr: 2 }}
-                  />
-                  <Rating
-                    value={newSkill.rating}
-                    onChange={(_, newValue) => setNewSkill({ ...newSkill, rating: newValue })}
-                    max={10}
-                  />
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    startIcon={<PlusCircle />}
-                    onClick={addManualSkill}
-                    sx={{ ml: 2 }}
-                  >
-                    Add Skill
-                  </Button>
-                </Box>
-              </Box>
-              <TextField
-                fullWidth
-                margin="normal"
-                label="Additional Notes"
-                name="requiredExpertise"
-                value={form.requiredExpertise}
-                onChange={handleChange}
-                multiline
-                rows={4}
-                InputProps={{
-                  startAdornment: <Briefcase size={20} style={{ marginRight: 8, alignSelf: 'flex-start', marginTop: 16 }} />,
-                }}
-              />
-              <Button 
-                type="submit" 
-                fullWidth
-                variant="contained" 
-                color="primary" 
-                sx={{ mt: 3, mb: 2 }}
-                disabled={loading}
-              >
-                {loading ? <CircularProgress size={24} /> : 'Create Interview'}
-              </Button>
+              ))}
+              <div ref={chatEndRef} />
             </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={5}>
-          <Paper elevation={3} sx={{ p: 4, mt: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h5" gutterBottom>
-              Expertise Evaluation Chat
-            </Typography>
-            <Box sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}>
-              <List>
-                {chatHistory.map((msg, index) => (
-                  <ListItem key={index}>
-                    <ListItemText 
-                      primary={msg.role === 'assistant' ? 'Chatbot' : 'You'}
-                      secondary={msg.content}
-                    />
-                  </ListItem>
-                ))}
-                <div ref={chatEndRef} />
-              </List>
-            </Box>
-            <Box component="form" onSubmit={sendMessage} sx={{ display: 'flex' }}>
+            <Box sx={{ display: 'flex', marginTop: 2 }}>
               <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Type your message here"
+                label="Type your message..."
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                sx={{ mr: 1 }}
+                fullWidth
+                margin="normal"
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChat()}
               />
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                endIcon={<Send />}
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={handleChat} 
+                sx={{ marginLeft: 1, alignSelf: 'center' }}
+                disabled={loading}
               >
-                Send
+                {loading ? <CircularProgress size={24} /> : <Send />}
               </Button>
             </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+          </Box>
+
+          <Box sx={{ margin: '20px 0' }}>
+            <Typography variant="h6">Expertise Evaluation</Typography>
+            <Grid container spacing={1}>
+              {Object.entries(expertiseEvaluation).map(([skill, rating], index) => (
+                <Grid item key={index}>
+                  <Chip 
+                    label={`${skill}: ${rating}`} 
+                    color="primary" 
+                    variant="outlined"
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+
+          <Button 
+            type="submit" 
+            variant="contained" 
+            color="primary" 
+            disabled={loading}
+            sx={{ marginTop: 2 }}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Create Interview'}
+          </Button>
+        </form>
+      </Paper>
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
-        onClose={closeSnackbar}
-        message={snackbar.message}
-      />
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity="success">
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError('')}
+      >
+        <Alert onClose={() => setError('')} severity="error">
+          {error}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
