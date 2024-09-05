@@ -40,7 +40,7 @@ const CreateInterview = () => {
         requiredExpertise: JSON.stringify(expertiseEvaluation)
       };
 
-      const response = await fetch(`http://192.168.3.13:8000/interviews`, {
+      const response = await fetch('http://192.168.3.13:8000/interviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,21 +73,27 @@ const CreateInterview = () => {
     try {
       const response = await fetch('http://192.168.3.13:8000/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
         body: JSON.stringify({
-          messages: chatHistory.concat({ role: 'user', content: userInput }),
-          model: "phi-3-medium-128k"
+          role: 'user', 
+          content: userInput
         }),
       });
 
-      const data = await response.json();
-      setChatHistory([...chatHistory, { role: 'user', content: userInput }, { role: 'assistant', content: data.response }]);
+      if (response.ok) {
+        const data = await response.json();
+        setChatHistory([...chatHistory, { role: 'user', content: userInput }, { role: 'assistant', content: data.response }]);
 
-      if (data.evaluation) {
-        setExpertiseEvaluation(data.evaluation);
+        if (data.extracted_data) {
+          setExpertiseEvaluation(data.extracted_data);
+        }
+      } else {
+        setError('Failed to get response from server');
       }
     } catch (err) {
-      setError('Failed to get response from server');
+      setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
