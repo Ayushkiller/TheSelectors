@@ -71,34 +71,45 @@ const CreateInterview = () => {
 
   const sendMessage = async () => {
     if (!userInput.trim()) return;
-
+  
     const newChatHistory = [...chatHistory, { role: 'user', content: userInput }];
     setChatHistory(newChatHistory);
     setUserInput('');
-
+  
     try {
-      const response = await fetch('http://localhost:8000/chat', {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  
+      const response = await fetch('http://192.168.3.13:8000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messages: newChatHistory,
           model: 'phi-3-medium-128k'
-        })
+        }),
+        signal: controller.signal
       });
-
-      if (!response.ok) throw new Error('Failed to get response from chatbot');
-
+  
+      clearTimeout(timeoutId);
+  
+      if (!response.ok) {
+        if (response.status === 504) {
+          throw new Error('Response generation timed out');
+        }
+        throw new Error('Failed to get response from chatbot');
+      }
+  
       const data = await response.json();
       setChatHistory([...newChatHistory, { role: 'assistant', content: data.response }]);
-
+  
       if (data.evaluation) {
         setExpertiseEvaluation(data.evaluation);
         setChatbotActive(false);
       }
     } catch (error) {
       console.error('Error communicating with chatbot:', error);
-      setChatbotError('Failed to connect to the chatbot. Please try again or enter the required expertise manually.');
-      setChatHistory([...newChatHistory, { role: 'assistant', content: "I'm sorry, I encountered an error. Please try again or enter the required expertise manually." }]);
+      setChatbotError('Failed to get a response from the chatbot. It might be taking too long to generate a response. Please try again or enter the required expertise manually.');
+      setChatHistory([...newChatHistory, { role: 'assistant', content: "I'm sorry, I encountered an error or timed out. Please try again or enter the required expertise manually." }]);
     }
   };
 
