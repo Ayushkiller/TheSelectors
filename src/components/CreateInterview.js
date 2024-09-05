@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TextField, Button, Container, Typography, Box, Paper, Snackbar, CircularProgress, Grid, Chip, Alert } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { TextField, Button, Container, Typography, Paper, Snackbar, CircularProgress, Grid, Chip, Alert, Box } from '@mui/material';
 import { Send } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 const CreateInterview = () => {
   const [form, setForm] = useState({
     subject: '',
@@ -9,37 +10,44 @@ const CreateInterview = () => {
     candidateName: '',
     requiredSkills: '',
   });
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
-  const navigate = useNavigate();
-
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [chatHistory, setChatHistory] = useState([]);
   const [userInput, setUserInput] = useState('');
   const [expertiseEvaluation, setExpertiseEvaluation] = useState({});
   const [currentSkill, setCurrentSkill] = useState('');
   const [skillsToEvaluate, setSkillsToEvaluate] = useState([]);
-
   const chatEndRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    if (!form.subject) newErrors.subject = 'Subject is required';
+    if (!form.date) newErrors.date = 'Date is required';
+    if (!form.candidateName) newErrors.candidateName = 'Candidate name is required';
+    if (!form.requiredSkills) newErrors.requiredSkills = 'At least one skill is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    setLoading(true);
-    setError('');
 
+    setLoading(true);
     try {
-      const formData = { 
-        ...form, 
-        requiredExpertise: JSON.stringify(expertiseEvaluation)
+      const formData = {
+        ...form,
+        requiredExpertise: JSON.stringify(expertiseEvaluation),
       };
 
       const response = await fetch('http://192.168.3.13:8000/interviews', {
@@ -52,15 +60,14 @@ const CreateInterview = () => {
       });
 
       const data = await response.json();
-
       if (response.ok) {
-        setSnackbar({ open: true, message: 'Interview created successfully!' });
+        setSnackbar({ open: true, message: 'Interview created successfully!', severity: 'success' });
         setTimeout(() => navigate('/'), 2000);
       } else {
-        setError(data.message || 'Failed to create interview');
+        setSnackbar({ open: true, message: data.message || 'Failed to create interview', severity: 'error' });
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      setSnackbar({ open: true, message: 'Network error. Please try again.', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -70,68 +77,52 @@ const CreateInterview = () => {
     const skills = form.requiredSkills.split(',').map(skill => skill.trim());
     setSkillsToEvaluate(skills);
     setCurrentSkill(skills[0]);
-    setChatHistory([{ role: 'assistant', content: `Hello! I'd like to learn more about your experience in ${skills[0]}. Could you tell me a bit about your background in this area?` }]);
+    setChatHistory([{ role: 'assistant', content: `Let's start with ${skills[0]}. Can you tell me about your experience in this area?` }]);
   };
 
   const handleChat = async () => {
     if (!userInput.trim()) return;
-    
+
     const newUserMessage = { role: 'user', content: userInput };
-    setChatHistory(prevHistory => [...prevHistory, newUserMessage]);
+    setChatHistory(prev => [...prev, newUserMessage]);
     setUserInput('');
     setLoading(true);
 
     try {
       const response = await fetch('http://192.168.3.13:8000/chat', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json' 
+        headers: {
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           role: 'user',
           content: userInput,
-          currentSkill: currentSkill,
-          chatHistory: chatHistory
+          currentSkill,
+          chatHistory,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         const assistantMessage = { role: 'assistant', content: data.content };
-        setChatHistory(prevHistory => [...prevHistory, assistantMessage]);
+        setChatHistory(prev => [...prev, assistantMessage]);
 
         if (data.rating) {
-          setExpertiseEvaluation(prevEvaluation => ({
-            ...prevEvaluation,
-            [currentSkill]: data.rating
-          }));
-
-          // Move to the next skill or end the evaluation
-          const currentIndex = skillsToEvaluate.indexOf(currentSkill);
-          if (currentIndex < skillsToEvaluate.length - 1) {
-            const nextSkill = skillsToEvaluate[currentIndex + 1];
+          setExpertiseEvaluation(prev => ({ ...prev, [currentSkill]: data.rating }));
+          const nextSkill = skillsToEvaluate[skillsToEvaluate.indexOf(currentSkill) + 1];
+          if (nextSkill) {
             setCurrentSkill(nextSkill);
-            setChatHistory(prevHistory => [...prevHistory, { role: 'assistant', content: `Great, thank you for sharing your experience in ${currentSkill}. Now, I'd like to learn about your background in ${nextSkill}. Could you tell me a bit about your experience in this area?` }]);
+            setChatHistory(prev => [...prev, { role: 'assistant', content: `Let's move on to ${nextSkill}. Tell me about your experience in this area.` }]);
           } else {
-            setChatHistory(prevHistory => [...prevHistory, { role: 'assistant', content: "Thank you for sharing your experiences across these skills. I appreciate your time and insights." }]);
+            setChatHistory(prev => [...prev, { role: 'assistant', content: 'Thank you for completing the evaluation!' }]);
           }
         }
-      } else {
-        setError('Failed to get response from server');
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      setSnackbar({ open: true, message: 'Failed to fetch response from server', severity: 'error' });
     } finally {
       setLoading(false);
     }
-  };
-
-  const validateForm = () => {
-    if (!form.subject || !form.date || !form.candidateName || !form.requiredSkills) {
-      setError('Please fill in all required fields');
-      return false;
-    }
-    return true;
   };
 
   return (
@@ -147,6 +138,8 @@ const CreateInterview = () => {
             fullWidth
             required
             margin="normal"
+            error={!!errors.subject}
+            helperText={errors.subject}
           />
           <TextField
             label="Date"
@@ -158,6 +151,8 @@ const CreateInterview = () => {
             required
             margin="normal"
             InputLabelProps={{ shrink: true }}
+            error={!!errors.date}
+            helperText={errors.date}
           />
           <TextField
             label="Candidate Name"
@@ -167,6 +162,8 @@ const CreateInterview = () => {
             fullWidth
             required
             margin="normal"
+            error={!!errors.candidateName}
+            helperText={errors.candidateName}
           />
           <TextField
             label="Required Skills (comma-separated)"
@@ -176,27 +173,25 @@ const CreateInterview = () => {
             fullWidth
             required
             margin="normal"
+            error={!!errors.requiredSkills}
+            helperText={errors.requiredSkills}
           />
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={startEvaluation}
-            sx={{ marginTop: 2, marginRight: 2 }}
-          >
+
+          <Button variant="contained" color="secondary" onClick={startEvaluation} sx={{ marginTop: 2 }}>
             Start Skills Evaluation
           </Button>
 
-          <Box sx={{ margin: '20px 0' }}>
+          <Box sx={{ marginTop: 2 }}>
             <Typography variant="h6">Chat with AI</Typography>
-            <Box sx={{ height: 400, overflowY: 'scroll', padding: 2, border: '1px solid #ccc', borderRadius: 2 }}>
+            <Box sx={{ height: 300, overflowY: 'scroll', padding: 2, border: '1px solid #ccc', borderRadius: 2, backgroundColor: '#fafafa' }}>
               {chatHistory.map((msg, index) => (
                 <Box key={index} sx={{ marginBottom: 2, textAlign: msg.role === 'user' ? 'right' : 'left' }}>
-                  <Typography variant="body1" sx={{ 
-                    backgroundColor: msg.role === 'user' ? '#e1f5fe' : '#f1f8e9', 
-                    padding: 1, 
+                  <Typography variant="body1" sx={{
+                    backgroundColor: msg.role === 'user' ? '#e1f5fe' : '#f1f8e9',
+                    padding: 1,
                     borderRadius: 2,
                     display: 'inline-block',
-                    maxWidth: '80%'
+                    maxWidth: '80%',
                   }}>
                     {msg.content}
                   </Typography>
@@ -204,6 +199,7 @@ const CreateInterview = () => {
               ))}
               <div ref={chatEndRef} />
             </Box>
+
             <Box sx={{ display: 'flex', marginTop: 2 }}>
               <TextField
                 label="Type your message..."
@@ -213,10 +209,10 @@ const CreateInterview = () => {
                 margin="normal"
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChat()}
               />
-              <Button 
-                variant="contained" 
-                color="primary" 
-                onClick={handleChat} 
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleChat}
                 sx={{ marginLeft: 1, alignSelf: 'center' }}
                 disabled={loading}
               >
@@ -225,25 +221,21 @@ const CreateInterview = () => {
             </Box>
           </Box>
 
-          <Box sx={{ margin: '20px 0' }}>
+          <Box sx={{ marginTop: 2 }}>
             <Typography variant="h6">Expertise Evaluation</Typography>
             <Grid container spacing={1}>
               {Object.entries(expertiseEvaluation).map(([skill, rating], index) => (
                 <Grid item key={index}>
-                  <Chip 
-                    label={`${skill}: ${rating}`} 
-                    color="primary" 
-                    variant="outlined"
-                  />
+                  <Chip label={`${skill}: ${rating}`} color="primary" variant="outlined" />
                 </Grid>
               ))}
             </Grid>
           </Box>
 
-          <Button 
-            type="submit" 
-            variant="contained" 
-            color="primary" 
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
             disabled={loading}
             sx={{ marginTop: 2 }}
           >
@@ -252,23 +244,9 @@ const CreateInterview = () => {
         </form>
       </Paper>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity="success">
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>
           {snackbar.message}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError('')}
-      >
-        <Alert onClose={() => setError('')} severity="error">
-          {error}
         </Alert>
       </Snackbar>
     </Container>
