@@ -19,16 +19,17 @@ const Login = ({ setAuth }) => {
     setError('');
 
     try {
-      const response = await fetch(`http://${process.env.REACT_APP_API_PORT}/api/auth/`, {
+      const response = await fetch(`http://192.168.3.13:5000/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: credentials.username, // Ensure this matches backend expectation
+          email: credentials.username,
           password: credentials.password,
         }),
       });
+      
 
       if (!response.ok) {
         const errorData = await response.json();
