@@ -2,21 +2,23 @@ import React, { useState, useRef, useEffect } from 'react';
 import { TextField, Button, Container, Typography, Box, Paper, Snackbar, CircularProgress, Grid, Chip, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Send } from 'lucide-react';
-
 const CreateInterview = () => {
   const [form, setForm] = useState({
     subject: '',
     date: '',
     candidateName: '',
+    requiredSkills: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '' });
   const navigate = useNavigate();
 
-  const [chatHistory, setChatHistory] = useState([{ role: 'assistant', content: "Hello! I'm here to help evaluate the expertise needed for the role you're hiring for. What specific skills or technologies are you looking for?" }]);
+  const [chatHistory, setChatHistory] = useState([]);
   const [userInput, setUserInput] = useState('');
   const [expertiseEvaluation, setExpertiseEvaluation] = useState({});
+  const [currentSkill, setCurrentSkill] = useState('');
+  const [skillsToEvaluate, setSkillsToEvaluate] = useState([]);
 
   const chatEndRef = useRef(null);
 
@@ -64,9 +66,18 @@ const CreateInterview = () => {
     }
   };
 
+  const startEvaluation = () => {
+    const skills = form.requiredSkills.split(',').map(skill => skill.trim());
+    setSkillsToEvaluate(skills);
+    setCurrentSkill(skills[0]);
+    setChatHistory([{ role: 'assistant', content: `Hello! I'd like to learn more about your experience in ${skills[0]}. Could you tell me a bit about your background in this area?` }]);
+  };
+
   const handleChat = async () => {
     if (!userInput.trim()) return;
-    setChatHistory([...chatHistory, { role: 'user', content: userInput }]);
+    
+    const newUserMessage = { role: 'user', content: userInput };
+    setChatHistory(prevHistory => [...prevHistory, newUserMessage]);
     setUserInput('');
     setLoading(true);
 
@@ -77,17 +88,33 @@ const CreateInterview = () => {
           'Content-Type': 'application/json' 
         },
         body: JSON.stringify({
-          role: 'user', 
-          content: userInput
+          role: 'user',
+          content: userInput,
+          currentSkill: currentSkill,
+          chatHistory: chatHistory
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setChatHistory([...chatHistory, { role: 'user', content: userInput }, { role: 'assistant', content: data.response }]);
+        const assistantMessage = { role: 'assistant', content: data.content };
+        setChatHistory(prevHistory => [...prevHistory, assistantMessage]);
 
-        if (data.extracted_data) {
-          setExpertiseEvaluation(data.extracted_data);
+        if (data.rating) {
+          setExpertiseEvaluation(prevEvaluation => ({
+            ...prevEvaluation,
+            [currentSkill]: data.rating
+          }));
+
+          // Move to the next skill or end the evaluation
+          const currentIndex = skillsToEvaluate.indexOf(currentSkill);
+          if (currentIndex < skillsToEvaluate.length - 1) {
+            const nextSkill = skillsToEvaluate[currentIndex + 1];
+            setCurrentSkill(nextSkill);
+            setChatHistory(prevHistory => [...prevHistory, { role: 'assistant', content: `Great, thank you for sharing your experience in ${currentSkill}. Now, I'd like to learn about your background in ${nextSkill}. Could you tell me a bit about your experience in this area?` }]);
+          } else {
+            setChatHistory(prevHistory => [...prevHistory, { role: 'assistant', content: "Thank you for sharing your experiences across these skills. I appreciate your time and insights." }]);
+          }
         }
       } else {
         setError('Failed to get response from server');
@@ -100,7 +127,7 @@ const CreateInterview = () => {
   };
 
   const validateForm = () => {
-    if (!form.subject || !form.date || !form.candidateName) {
+    if (!form.subject || !form.date || !form.candidateName || !form.requiredSkills) {
       setError('Please fill in all required fields');
       return false;
     }
@@ -141,6 +168,23 @@ const CreateInterview = () => {
             required
             margin="normal"
           />
+          <TextField
+            label="Required Skills (comma-separated)"
+            name="requiredSkills"
+            value={form.requiredSkills}
+            onChange={handleChange}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={startEvaluation}
+            sx={{ marginTop: 2, marginRight: 2 }}
+          >
+            Start Skills Evaluation
+          </Button>
 
           <Box sx={{ margin: '20px 0' }}>
             <Typography variant="h6">Chat with AI</Typography>
