@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container, Typography, Grid, Box, CircularProgress, TextField, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Card, CardContent, Button, Alert, AlertTitle
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { Search, PlusCircle, Calendar, User, Briefcase } from 'lucide-react';
-import useFetch from '../hooks/useFetch';
+import axios from 'axios';
 
 const CardStatistic = ({ title, value, icon: Icon }) => (
   <Card>
@@ -25,15 +25,41 @@ const CardStatistic = ({ title, value, icon: Icon }) => (
 
 const Dashboard = () => {
   const [search, setSearch] = useState('');
-  const { data: interviews, loading, error } = useFetch(`${process.env.REACT_APP_API_URL}/api/interviews`);
+  const [interviews, setInterviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filteredInterviews = interviews?.filter(interview =>
+  useEffect(() => {
+    const fetchInterviews = async () => {
+      try {
+        setLoading(true);
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+        const response = await axios.get(`${apiUrl}/api/interviews`);
+        setInterviews(response.data);
+        setLoading(false);
+      } catch (err) {
+        setLoading(false);
+        if (err.response) {
+          setError(`Server Error: ${err.response.status} - ${err.response.data.message || err.response.statusText}`);
+        } else if (err.request) {
+          setError('Network Error: Unable to reach the server. Please check your internet connection and try again.');
+        } else {
+          setError(`Error: ${err.message}`);
+        }
+        console.error('Detailed error:', err);
+      }
+    };
+
+    fetchInterviews();
+  }, []);
+
+  const filteredInterviews = interviews.filter(interview =>
     interview.subject.toLowerCase().includes(search.toLowerCase()) ||
     interview.candidateName.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  );
 
-  const pendingAssignments = interviews?.filter(interview => !interview.expertAssigned).length || 0;
-  const completedInterviews = interviews?.filter(interview => interview.status === 'completed').length || 0;
+  const pendingAssignments = interviews.filter(interview => !interview.expertAssigned).length;
+  const completedInterviews = interviews.filter(interview => interview.status === 'completed').length;
 
   const renderContent = () => {
     if (loading) {
@@ -48,14 +74,19 @@ const Dashboard = () => {
       return (
         <Alert severity="error" sx={{ mt: 2 }}>
           <AlertTitle>Error</AlertTitle>
-          {error.includes("not valid JSON") 
-            ? "There was an error connecting to the server. Please try again later or contact support."
-            : error}
+          {error}
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            If this issue persists, please contact support with the following details:
+            <br />
+            Time: {new Date().toLocaleString()}
+            <br />
+            API URL: {process.env.REACT_APP_API_URL}
+          </Typography>
         </Alert>
       );
     }
 
-    if (!interviews || interviews.length === 0) {
+    if (interviews.length === 0) {
       return (
         <Alert severity="info" sx={{ mt: 2 }}>
           <AlertTitle>No Interviews</AlertTitle>
@@ -131,7 +162,7 @@ const Dashboard = () => {
       
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <CardStatistic title="Total Interviews" value={interviews?.length || 0} icon={Calendar} />
+          <CardStatistic title="Total Interviews" value={interviews.length} icon={Calendar} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <CardStatistic title="Pending Assignments" value={pendingAssignments} icon={User} />
