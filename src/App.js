@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, Link } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Container, CircularProgress } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
 import Dashboard from './components/Dashboard';
 import CreateInterview from './components/CreateInterview';
 import ExpertList from './components/ExpertList';
 import Login from './components/Login';
+import LoadingScreen from './components/LoadingScreen';
 
 const ProtectedRoute = ({ children, auth }) => {
   if (!auth) {
@@ -50,11 +51,7 @@ const App = () => {
   };
 
   if (loading) {
-    return (
-      <Container style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Container>
-    );
+    return <LoadingScreen />;
   }
 
   return (
