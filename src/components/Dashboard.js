@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
-import { Container, Typography, Grid, Box, CircularProgress, TextField, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Card, CardContent, Button } from '@mui/material';
+import {
+  Container, Typography, Grid, Box, CircularProgress, TextField, Paper, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Card, CardContent, Button, Alert, AlertTitle
+} from '@mui/material';
 import { Link } from 'react-router-dom';
 import { Search, PlusCircle, Calendar, User, Briefcase } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CardHeader, CardTitle } from '@/components/ui/card';
 import useFetch from '../hooks/useFetch';
 
 const CardStatistic = ({ title, value, icon: Icon }) => (
   <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
-    </CardHeader>
     <CardContent>
-      <div className="text-2xl font-bold">{value}</div>
+      <Typography color="textSecondary" gutterBottom>
+        {title}
+      </Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Typography variant="h5" component="div">
+          {value}
+        </Typography>
+        {Icon && <Icon size={24} />}
+      </Box>
     </CardContent>
   </Card>
 );
@@ -30,11 +35,101 @@ const Dashboard = () => {
   const pendingAssignments = interviews?.filter(interview => !interview.expertAssigned).length || 0;
   const completedInterviews = interviews?.filter(interview => interview.status === 'completed').length || 0;
 
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (error) {
+      return (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          <AlertTitle>Error</AlertTitle>
+          {error.includes("not valid JSON") 
+            ? "There was an error connecting to the server. Please try again later or contact support."
+            : error}
+        </Alert>
+      );
+    }
+
+    if (!interviews || interviews.length === 0) {
+      return (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          <AlertTitle>No Interviews</AlertTitle>
+          There are currently no interviews scheduled. Click "Create New Interview" to get started.
+        </Alert>
+      );
+    }
+
+    return (
+      <TableContainer component={Paper} elevation={3}>
+        <Table sx={{ minWidth: 650 }} aria-label="interview table">
+          <TableHead>
+            <TableRow>
+              <TableCell>Subject</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Candidate Name</TableCell>
+              <TableCell>Expertise Required</TableCell>
+              <TableCell>Status</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredInterviews.map((interview) => (
+              <TableRow key={interview._id} sx={{ '&:hover': { backgroundColor: 'action.hover' } }}>
+                <TableCell>{interview.subject}</TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Calendar size={16} style={{ marginRight: 8 }} />
+                    {new Date(interview.date).toLocaleDateString()}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <User size={16} style={{ marginRight: 8 }} />
+                    {interview.candidateName}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Briefcase size={16} style={{ marginRight: 8 }} />
+                    {interview.requiredExpertise}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                      display: 'inline-block',
+                      fontWeight: 'medium',
+                      fontSize: '0.75rem',
+                      backgroundColor: interview.status === 'completed' ? 'success.light' :
+                                       interview.status === 'scheduled' ? 'info.light' : 'warning.light',
+                      color: interview.status === 'completed' ? 'success.dark' :
+                             interview.status === 'scheduled' ? 'info.dark' : 'warning.dark',
+                    }}
+                  >
+                    {interview.status}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
   return (
-    <Container maxWidth="lg" className="mt-8 mb-8">
-      <Typography variant="h4" className="mb-6">Interview Dashboard</Typography>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Typography variant="h4" gutterBottom>Interview Dashboard</Typography>
       
-      <Grid container spacing={4} className="mb-8">
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <CardStatistic title="Total Interviews" value={interviews?.length || 0} icon={Calendar} />
         </Grid>
@@ -53,8 +148,8 @@ const Dashboard = () => {
                 to="/create-interview"
                 variant="contained"
                 color="primary"
-                startIcon={<PlusCircle />}
-                className="mt-2"
+                startIcon={<PlusCircle size={16} />}
+                sx={{ mt: 1 }}
               >
                 New Interview
               </Button>
@@ -63,8 +158,8 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      <Box className="flex items-center mb-4">
-        <Search className="mr-2 text-gray-500" size={20} />
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Search size={20} style={{ marginRight: 8, color: 'rgba(0, 0, 0, 0.54)' }} />
         <TextField
           label="Search interviews"
           variant="outlined"
@@ -74,63 +169,7 @@ const Dashboard = () => {
         />
       </Box>
 
-      {loading ? (
-        <Box className="flex justify-center mt-8">
-          <CircularProgress />
-        </Box>
-      ) : error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : (
-        <TableContainer component={Paper} elevation={3}>
-          <Table className="min-w-full" aria-label="interview table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Subject</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Candidate Name</TableCell>
-                <TableCell>Expertise Required</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredInterviews.map((interview) => (
-                <TableRow key={interview._id} className="hover:bg-gray-50">
-                  <TableCell>{interview.subject}</TableCell>
-                  <TableCell>
-                    <Box className="flex items-center">
-                      <Calendar size={16} className="mr-2" />
-                      {new Date(interview.date).toLocaleDateString()}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box className="flex items-center">
-                      <User size={16} className="mr-2" />
-                      {interview.candidateName}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box className="flex items-center">
-                      <Briefcase size={16} className="mr-2" />
-                      {interview.requiredExpertise}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      interview.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      interview.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {interview.status}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      {renderContent()}
     </Container>
   );
 };
